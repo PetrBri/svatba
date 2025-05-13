@@ -1,1 +1,174 @@
-aaa
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Svatba Míši a Petra</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-image: url('https://images.unsplash.com/photo-1530026186672-4a62e71bb88f?auto=format&fit=crop&w=1950&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #333;
+    }
+
+    .overlay {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 2rem;
+      margin: 2rem;
+      border-radius: 15px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    h1 {
+      text-align: center;
+      color: #b37ba4;
+      font-size: 2.5rem;
+      margin-top: 2rem;
+      background-color: rgba(255,255,255,0.8);
+      padding: 1rem 2rem;
+      border-radius: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .room {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .room h2 {
+      margin-top: 0;
+    }
+
+    button {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      background-color: #b37ba4;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    input[type="text"] {
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .reserved {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Svatba Míši a Petra</h1>
+
+  <div class="overlay" id="rooms">
+    <p>Načítání...</p>
+  </div>
+
+  <script>
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxeFAR_39COOdsvJvYH6B1ZXG_ZvzB2gQyclYlb-4Bgn2VjtvZNePouS6QgMtjJ1pNN/exec';
+
+    const rooms = [
+      { id: 'first', name: 'První pokoj' },
+      { id: 'second', name: 'Druhý pokoj' },
+      { id: 'third', name: 'Třetí pokoj' }
+    ];
+
+    async function loadReservations() {
+      try {
+        const response = await fetch(apiUrl);
+        const reservations = await response.json();
+        const reservedMap = new Map(reservations.map(r => [r.roomId, r]));
+
+        const container = document.getElementById('rooms');
+        container.innerHTML = '';
+
+        rooms.forEach(room => {
+          const r = reservedMap.get(room.id);
+          const div = document.createElement('div');
+          div.className = 'room';
+          if (r) div.classList.add('reserved');
+
+          div.innerHTML = `
+            <h2>${room.name}</h2>
+            <label>
+              <input type="checkbox" id="extra-${room.id}">
+              Přistýlka
+            </label><br>
+            <input type="text" id="name-${room.id}" placeholder="Příjmení" ${r ? 'disabled' : ''}/><br>
+            <button onclick="reserve('${room.id}')" ${r ? 'disabled' : ''}>Rezervovat</button>
+            <p id="msg-${room.id}">${r ? 'Rezervováno pro: ' + r.name : ''}</p>
+          `;
+
+          container.appendChild(div);
+        });
+      } catch (error) {
+        document.getElementById('rooms').innerHTML = '<p>Chyba při načítání rezervací.</p>';
+        console.error(error);
+      }
+    }
+
+    async function reserve(roomId) {
+      const name = document.getElementById(`name-${roomId}`).value.trim();
+      const extra = document.getElementById(`extra-${roomId}`).checked;
+
+      if (!name) {
+        alert('Zadejte příjmení');
+        return;
+      }
+
+      const data = {
+        roomId,
+        name,
+        extraBed: extra ? 'ano' : 'ne'
+      };
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          alert('Rezervace uložena!');
+          loadReservations();
+        } else {
+          alert('Chyba při ukládání');
+        }
+      } catch (error) {
+        alert('Nepodařilo se spojit se serverem');
+        console.error(error);
+      }
+    }
+
+    loadReservations();
+  </script>
+</body>
+</html>
